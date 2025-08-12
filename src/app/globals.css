@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Глобальные игровые стили */
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-game-bg text-game-text font-game;
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+  
+  /* Кастомная прокрутка */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-game-panel;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-game-border rounded-lg;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-game-accent;
+  }
+}
+
+@layer components {
+  /* Компоненты игрового UI */
+  .game-panel {
+    @apply bg-game-panel/80 backdrop-blur-sm border border-game-border rounded-lg;
+  }
+  
+  .game-button {
+    @apply bg-game-accent hover:bg-game-accent/80 text-white px-4 py-2 rounded-lg 
+           transition-all duration-200 font-medium;
+  }
+  
+  .game-button:hover {
+    @apply animate-glow;
+  }
+  
+  .game-button:disabled {
+    @apply bg-gray-600 text-gray-400 cursor-not-allowed;
+  }
+  
+  .code-editor {
+    @apply bg-slate-900 border border-game-border rounded-lg overflow-hidden;
+  }
+  
+  .console-log {
+    @apply font-code text-sm;
+  }
+  
+  .console-error {
+    @apply console-log text-blockchain-error;
+  }
+  
+  .console-success {
+    @apply console-log text-blockchain-success;
+  }
+  
+  .console-warning {
+    @apply console-log text-blockchain-warning;
+  }
+  
+  .level-badge {
+    @apply bg-gradient-to-r from-primary-600 to-primary-700 text-white 
+           px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .achievement-badge {
+    @apply bg-gradient-to-r from-yellow-500 to-yellow-600 text-black
+           px-2 py-1 rounded-full text-xs font-bold;
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  .glass-effect {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+} 

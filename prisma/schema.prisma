@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  walletAddress String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  progress  Progress?
+  achievements UserAchievement[]
+  completedLevels CompletedLevel[]
+  unlockedLevels UnlockedLevel[]
+  levelCodes LevelCode[]
+}
+
+model Progress {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  totalXP      Int      @default(0)
+  currentLevel Int      @default(1)
+  playTime     Int      @default(0) // в секундах
+  lastPlayed   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([currentLevel])
+}
+
+model AchievementDefinition {
+  id          String  @id         // фиксированный идентификатор
+  title       String
+  description String
+  icon        String
+  xpReward    Int
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String                 @id @default(cuid())
+  userId        String
+  user          User                   @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   AchievementDefinition  @relation(fields: [achievementId], references: [id])
+  unlocked      Boolean                @default(false)
+  unlockedAt    DateTime?
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}
+
+model CompletedLevel {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  levelId     Int
+  completedAt DateTime @default(now())
+
+  @@unique([userId, levelId])
+  @@index([userId])
+}
+
+model UnlockedLevel {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  levelId   Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, levelId])
+  @@index([userId])
+}
+
+model LevelCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  levelId   Int
+  code      String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, levelId])
+  @@index([userId])
+}
+
+
