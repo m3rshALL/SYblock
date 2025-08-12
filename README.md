@@ -165,20 +165,13 @@ npm run dev
 ---
 
 ## 🐳 Запуск через Docker (самый простой способ)
-Требуется Docker Desktop.
+1) **Установи Docker Desktop** — [скачать с официального сайта](https://www.docker.com/products/docker-desktop/)
 
-1) Создай `.env` в корне:
-```bash
-DATABASE_URL="postgresql://postgres:postgres@db:5432/syblock?schema=public"
-REDIS_URL="redis://redis:6379"
-```
-
-2) Запусти всё:
+2) **Запусти всё:**
 ```bash
 docker compose up -d
 ```
-
-3) Открой сайт:
+3) **Открой сайт:** 
 - http://localhost:3000
 
 Если 3000 занят — поменяй в `docker-compose.yml` на `3001:3000`, снова `docker compose up -d`.
