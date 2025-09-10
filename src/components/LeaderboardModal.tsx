@@ -43,14 +43,16 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     codeLines: 0
   })
 
-  const userName = (typeof window !== 'undefined' ? localStorage.getItem('smart-you-player-name') : null) || GameStorage.getDefaultProgress().player.name
+  const userName = (typeof window !== 'undefined' ? localStorage.getItem('smart-you-player-name') : null) || GameStorage.getProgress().player.name
   const { data, isLoading } = useLeaderboard(activeCategory, userName)
 
   useEffect(() => {
     if (!isOpen) return
+    console.log('LeaderboardModal: data loaded', { data, userName, isLoading })
     if (data?.ok && Array.isArray(data.players)) {
       setLeaderboard(data.players)
       const me = data.players.find((p: any) => p.isCurrentPlayer) || data.players.find((p: any) => p.name === userName)
+      console.log('LeaderboardModal: found current player', { me, allPlayers: data.players.map((p: any) => ({ name: p.name, isCurrentPlayer: p.isCurrentPlayer })) })
       if (me) {
         setPlayerStats({
           totalXP: me.totalXP,
@@ -178,19 +180,38 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
         {/* Содержимое */}
         <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {/* Заголовок категории */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
-              {currentCategory && <currentCategory.icon className={`w-6 h-6 ${currentCategory.color}`} />}
-              Рейтинг по {currentCategory?.name.toLowerCase()}
-            </h2>
-            <p className="text-gray-400">
-              {activeCategory === 'xp' && 'Игроки с наибольшим количеством опыта'}
-              {activeCategory === 'speed' && 'Самые быстрые прохождения игры'}
-              {activeCategory === 'achievements' && 'Больше всего полученных достижений'}
-              {activeCategory === 'code' && 'Наибольшее количество написанного кода'}
-            </p>
-          </div>
+          {/* Загрузка */}
+          {isLoading && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto"></div>
+              <p className="text-gray-400 mt-4">Загрузка рейтинга...</p>
+            </div>
+          )}
+
+          {/* Ошибка загрузки */}
+          {!isLoading && (!data || !data.ok) && (
+            <div className="text-center py-8">
+              <p className="text-red-400">Не удалось загрузить данные рейтинга</p>
+              <p className="text-gray-400 mt-2">Проверьте подключение к интернету</p>
+            </div>
+          )}
+
+          {/* Данные загружены */}
+          {!isLoading && data?.ok && (
+            <>
+              {/* Заголовок категории */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                  {currentCategory && <currentCategory.icon className={`w-6 h-6 ${currentCategory.color}`} />}
+                  Рейтинг по {currentCategory?.name.toLowerCase()}
+                </h2>
+                <p className="text-gray-400">
+                  {activeCategory === 'xp' && 'Игроки с наибольшим количеством опыта'}
+                  {activeCategory === 'speed' && 'Самые быстрые прохождения игры'}
+                  {activeCategory === 'achievements' && 'Больше всего полученных достижений'}
+                  {activeCategory === 'code' && 'Наибольшее количество написанного кода'}
+                </p>
+              </div>
 
           {/* Ваша позиция */}
           {currentPlayer && (
@@ -318,6 +339,8 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               <div>• Изучайте лучшие практики Solidity</div>
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* Подвал */}

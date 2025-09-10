@@ -39,7 +39,10 @@ const GameHeader: React.FC<GameHeaderProps> = ({
 
   useEffect(() => {
     setCertificateEnabled(Array.isArray(completedLevels) && completedLevels.length >= maxLevel)
-    setPlayerName(GameStorage.getDefaultProgress().player.name)
+    // Получаем имя из localStorage или из текущего прогресса
+    const storedName = typeof window !== 'undefined' ? localStorage.getItem('smart-you-player-name') : null
+    const currentProgress = GameStorage.getProgress()
+    setPlayerName(storedName || currentProgress.player.name || GameStorage.getDefaultProgress().player.name)
   }, [completedLevels])
 
   return (
