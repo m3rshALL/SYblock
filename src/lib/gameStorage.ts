@@ -100,10 +100,18 @@ const DEFAULT_ACHIEVEMENTS: Achievement[] = [
 
 export class GameStorage {
   static readonly DEFAULT_PLAYER_NAME = 'Хранитель Блокчейна'
-  // Получить прогресс из localStorage
+  
+  // Кэш для текущего прогресса
+  private static _cachedProgress: GameProgress | null = null
+  
+  // Получить прогресс (из кэша или дефолт)
   static getProgress(): GameProgress {
-    // Полный переход на БД: синхронно возвращаем дефолт, а фактические данные получаем через getProgressFromDB
-    return this.getDefaultProgress()
+    return this._cachedProgress || this.getDefaultProgress()
+  }
+
+  // Установить кэшированный прогресс
+  static setCachedProgress(progress: GameProgress): void {
+    this._cachedProgress = progress
   }
 
   // Асинхронное чтение прогресса из БД
@@ -111,7 +119,11 @@ export class GameStorage {
     try {
       const res = await fetch('/api/progress?name=' + encodeURIComponent(playerName), { cache: 'no-store' })
       const data = await res.json()
-      if (!data?.ok) return this.getDefaultProgress()
+      if (!data?.ok) {
+        const defaultProgress = this.getDefaultProgress()
+        this.setCachedProgress(defaultProgress)
+        return defaultProgress
+      }
 
       const completed = (data.completedLevels || []).map((c: any) => c.levelId)
       const unlocked = (data.unlockedLevels || []).map((u: any) => u.levelId)
@@ -142,6 +154,9 @@ export class GameStorage {
         lastPlayed: data.progress?.lastPlayed ?? new Date().toISOString(),
       }
 
+      // Кэшируем загруженный прогресс
+      this.setCachedProgress(gp)
+
       // Синхронизируем локальный код с БД, если нужно (best-effort)
       try {
         const levelCodes = Array.from({ length: 5 }, (_, i) => {
@@ -168,12 +183,17 @@ export class GameStorage {
       return gp
     } catch (e) {
       console.error(e)
-      return this.getDefaultProgress()
+      const defaultProgress = this.getDefaultProgress()
+      this.setCachedProgress(defaultProgress)
+      return defaultProgress
     }
   }
 
   // Сохранить прогресс
   static saveProgress(progress: GameProgress): boolean {
+    // Обновляем кэш
+    this.setCachedProgress(progress)
+    
     // Полный переход: сохраняем через API, локально ничего не пишем
     if (typeof window === 'undefined') return false
     ;(async () => {
@@ -191,7 +211,10 @@ export class GameStorage {
             achievements: progress.achievements,
           })
         })
-      } catch {}
+        console.log('💾 Прогресс сохранен в БД')
+      } catch (e) {
+        console.error('❌ Ошибка сохранения прогресса:', e)
+      }
     })()
     return true
   }
@@ -221,7 +244,7 @@ export class GameStorage {
 
   // Установить имя игрока
   static setPlayerName(name: string): GameProgress {
-    const progress = this.getDefaultProgress()
+    const progress = this.getProgress() // Теперь получит актуальные данные из кэша
     progress.player.name = name
     try {
       if (typeof window !== 'undefined') {
@@ -296,7 +319,7 @@ export class GameStorage {
 
   // Сохранить текущий уровень
   static setCurrentLevel(levelId: number): GameProgress {
-    const progress = this.getProgress()
+    const progress = this.getProgress()  // Теперь получит актуальные данные из кэша
     progress.currentLevel = levelId
     progress.lastPlayed = new Date().toISOString()
     this.saveProgress(progress)
@@ -360,7 +383,7 @@ export class GameStorage {
 
   // Обновить время игры
   static updatePlayTime(seconds: number): void {
-    const progress = this.getProgress()
+    const progress = this.getProgress() // Теперь получит актуальные данные из кэша
     progress.playTime += seconds
     this.saveProgress(progress)
   }
@@ -370,7 +393,9 @@ export class GameStorage {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY)
     }
-    return this.getDefaultProgress()
+    const defaultProgress = this.getDefaultProgress()
+    this.setCachedProgress(defaultProgress)
+    return defaultProgress
   }
 
   // Экспорт прогресса
@@ -405,7 +430,7 @@ export class GameStorage {
     playTime: string
     completion: number
   } {
-    const progress = this.getProgress()
+    const progress = this.getProgress() // Теперь получит актуальные данные из кэша
     const hours = Math.floor(progress.playTime / 3600)
     const minutes = Math.floor((progress.playTime % 3600) / 60)
     

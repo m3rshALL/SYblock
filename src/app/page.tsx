@@ -36,9 +36,15 @@ export default function GamePage() {
       ;(async () => {
         const name = (hasName ? localStorage.getItem('smart-you-player-name') : null) || localProgress.player.name
         const fromDb = await GameStorage.getProgressFromDB(name)
+        
+        // Обновляем состояние компонента
         setGameProgress(fromDb)
         setCurrentLevel(fromDb.currentLevel)
         setPlayerXP(fromDb.totalXP)
+        
+        // Убедимся что кэш обновлен
+        GameStorage.setCachedProgress(fromDb)
+        console.log('✅ Прогресс загружен:', fromDb)
       })()
     }
   }, [])

@@ -1,8 +1,9 @@
 'use client'
 
-import { Trophy, Star, Target, Book, HelpCircle, Award, Users } from 'lucide-react'
+import { Trophy, Star, Target, Book, HelpCircle, Award, Users, BookOpen } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 const RemixInfo = dynamic(() => import('./RemixInfo'), { ssr: false })
 const AchievementsModal = dynamic(() => import('./AchievementsModal'), { ssr: false })
 const LeaderboardModal = dynamic(() => import('./LeaderboardModal'), { ssr: false })
@@ -88,6 +89,16 @@ const GameHeader: React.FC<GameHeaderProps> = ({
 
           {/* Навигационные кнопки */}
           <div className="flex items-center space-x-2">
+            {/* Теория */}
+            <Link 
+              href="/materials"
+              className="h-9 px-4 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex items-center min-w-[100px] justify-center"
+              title="Теоретические материалы"
+            >
+              <BookOpen className="w-4 h-4 mr-1" />
+              Теория
+            </Link>
+
             {/* Справка по Remix */}
             <button 
               onClick={() => setShowRemixInfo(true)}
