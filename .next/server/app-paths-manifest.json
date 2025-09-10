@@ -1,1 +1,6 @@
-{}
+{
+  "/page": "app/page.js",
+  "/api/leaderboard/route": "app/api/leaderboard/route.js",
+  "/api/level-code/route": "app/api/level-code/route.js",
+  "/api/progress/route": "app/api/progress/route.js"
+}
