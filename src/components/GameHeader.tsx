@@ -15,6 +15,7 @@ interface GameHeaderProps {
   currentLevel: number
   playerXP: number
   completedLevels?: number[]
+  unlockedLevels?: number[]
   onLevelChange?: (level: number) => void
 }
 
@@ -22,6 +23,7 @@ const GameHeader: React.FC<GameHeaderProps> = ({
   currentLevel, 
   playerXP, 
   completedLevels = [],
+  unlockedLevels = [1],
   onLevelChange 
 }) => {
   const maxLevel = 5
@@ -63,7 +65,7 @@ const GameHeader: React.FC<GameHeaderProps> = ({
                 className="bg-gray-700 text-game-text px-2 py-1 rounded text-sm border border-gray-600 hover:border-game-accent focus:border-game-accent focus:outline-none"
               >
                 {Array.from({ length: maxLevel }, (_, i) => i + 1).map(level => (
-                  <option key={level} value={level} disabled={level > 1 && !completedLevels.includes(level - 1)}>
+                  <option key={level} value={level} disabled={!unlockedLevels.includes(level)}>
                     Уровень {level} {completedLevels.includes(level) ? '✓' : ''}
                   </option>
                 ))}

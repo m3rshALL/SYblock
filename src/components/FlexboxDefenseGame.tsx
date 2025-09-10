@@ -18,6 +18,7 @@ interface FlexboxDefenseGameProps {
   codeScore: number
   onGameComplete: (success: boolean) => void
   onGameStart: () => void
+  onGameRestart?: () => void
   startSignal?: number
 }
 
@@ -28,6 +29,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   codeScore,
   onGameComplete,
   onGameStart,
+  onGameRestart,
   startSignal
 }) => {
   // Основное состояние игры
@@ -134,6 +136,11 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     setLives(10)
     setMoney(100)
     setSelectedTower(null)
+    
+    // Вызываем callback перезапуска если он есть
+    if (onGameRestart) {
+      onGameRestart()
+    }
   }
 
   const isValidAddress = (addr: string): boolean => /^0x[a-fA-F0-9]{40}$/.test(addr.trim())
@@ -585,7 +592,16 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
         )}
         {gameState === 'defeat' && (
           <div className="absolute inset-0 bg-red-900 bg-opacity-75 flex items-center justify-center">
-            <div className="text-2xl font-bold text-red-400">💀 ПОРАЖЕНИЕ!</div>
+            <div className="bg-game-panel p-6 rounded-lg border border-red-500/50 text-center">
+              <div className="text-2xl font-bold text-red-400 mb-4">💀 ПОРАЖЕНИЕ!</div>
+              <p className="text-gray-300 mb-4">Ваша защита была прорвана. Попробуйте снова!</p>
+              <button
+                onClick={resetToInitialWaiting}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+              >
+                🔄 Попробовать снова
+              </button>
+            </div>
           </div>
         )}
         {gameState === 'waiting' && (

@@ -6,6 +6,7 @@ import { Shield, Zap, Users, Coins, AlertTriangle } from 'lucide-react'
 interface GameAreaProps {
   level: number
   onLevelComplete: (xp: number) => void
+  onLevelRestart?: () => void
 }
 
 interface GameCharacter {
@@ -16,10 +17,18 @@ interface GameCharacter {
   status: 'idle' | 'attacking' | 'defending' | 'success' | 'failed'
 }
 
-const GameArea: React.FC<GameAreaProps> = ({ level, onLevelComplete }) => {
+const GameArea: React.FC<GameAreaProps> = ({ level, onLevelComplete, onLevelRestart }) => {
   const [characters, setCharacters] = useState<GameCharacter[]>([])
   const [gameState, setGameState] = useState<'idle' | 'simulating' | 'success' | 'failed'>('idle')
   const [scenario, setScenario] = useState('')
+
+  const restartLevel = () => {
+    setGameState('idle')
+    initializeLevel(level)
+    if (onLevelRestart) {
+      onLevelRestart()
+    }
+  }
 
   // Инициализация персонажей для текущего уровня
   useEffect(() => {
@@ -178,7 +187,17 @@ const GameArea: React.FC<GameAreaProps> = ({ level, onLevelComplete }) => {
 
         {gameState === 'failed' && (
           <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-            <div className="text-4xl">💥</div>
+            <div className="bg-game-panel p-6 rounded-lg border border-red-500/50 text-center">
+              <div className="text-4xl mb-4">💥</div>
+              <h3 className="text-xl font-bold text-red-400 mb-2">Уровень провален!</h3>
+              <p className="text-gray-300 mb-4">Исправьте код и попробуйте снова</p>
+              <button
+                onClick={restartLevel}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+              >
+                🔄 Попробовать снова
+              </button>
+            </div>
           </div>
         )}
       </div>

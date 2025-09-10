@@ -262,6 +262,7 @@ export default function GamePage() {
           currentLevel={currentLevel}
           playerXP={playerXP}
           completedLevels={gameProgress.completedLevels}
+          unlockedLevels={gameProgress.unlockedLevels}
           onLevelChange={setCurrentLevel}
         />
       
@@ -305,6 +306,9 @@ export default function GamePage() {
               }}
               onGameStart={() => {
                 addConsoleLog('info', '🎮 Игра запущена! Защищайте блокчейн!')
+              }}
+              onGameRestart={() => {
+                addConsoleLog('info', '🔄 Игра перезапущена. Удачи!')
               }}
               startSignal={startSignal}
             />
