@@ -38,7 +38,10 @@ const GameHeader: React.FC<GameHeaderProps> = ({
   const progressPercent = (playerXP % xpToNextLevel) / xpToNextLevel * 100
 
   useEffect(() => {
-    setCertificateEnabled(Array.isArray(completedLevels) && completedLevels.length >= maxLevel)
+    // Активируем сертификат, если завершен 5-й уровень (финальный)
+    const isLevel5Completed = Array.isArray(completedLevels) && completedLevels.includes(maxLevel)
+    console.log(`🏆 Проверка сертификата: completedLevels=${JSON.stringify(completedLevels)}, level5completed=${isLevel5Completed}`)
+    setCertificateEnabled(isLevel5Completed)
     // Получаем имя из localStorage или из текущего прогресса
     const storedName = typeof window !== 'undefined' ? localStorage.getItem('smart-you-player-name') : null
     const currentProgress = GameStorage.getProgress()
@@ -125,12 +128,17 @@ const GameHeader: React.FC<GameHeaderProps> = ({
             </button>
             
             <button
+              onClick={certificateEnabled ? () => setShowCertificate(true) : undefined}
               disabled={!certificateEnabled}
-              onClick={() => setShowCertificate(true)}
-              className={`h-9 px-4 text-sm ${certificateEnabled ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-900/40 cursor-not-allowed'} text-white rounded transition-colors flex items-center min-w-[120px] justify-center`}
+              className={`h-9 px-4 text-sm rounded transition-colors flex items-center min-w-[120px] justify-center ${
+                certificateEnabled 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' 
+                  : 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-60'
+              }`}
+              title={certificateEnabled ? 'Сертификат доступен' : `Завершите 5-й уровень для получения сертификата`}
             >
               <Award className="w-4 h-4 mr-1" />
-              Сертификат
+              Сертификат {certificateEnabled ? '✅' : '🔒'}
             </button>
             
             <button 
@@ -164,7 +172,7 @@ const GameHeader: React.FC<GameHeaderProps> = ({
       />
 
       <CertificateModal
-        isOpen={showCertificate}
+        isOpen={showCertificate && certificateEnabled}
         onClose={() => setShowCertificate(false)}
         playerName={playerName}
         totalXP={playerXP}

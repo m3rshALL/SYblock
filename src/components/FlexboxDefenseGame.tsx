@@ -39,7 +39,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   const [enemies, setEnemies] = useState<Enemy[]>([])
   const [towers, setTowers] = useState<GameTower[]>([])
   const [lives, setLives] = useState(10)
-  const [money, setMoney] = useState(100) // Классическая валюта tower defense
+  const [money, setMoney] = useState(100) // Временное значение, будет обновлено в useEffect
   const [selectedTower, setSelectedTower] = useState<TowerType | null>(null)
   const [pendingReward, setPendingReward] = useState<{ level: number; score: number } | null>(null)
   const [rewardAddress, setRewardAddress] = useState<string>("")
@@ -66,8 +66,17 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     } catch {}
   }, [speedMultiplier])
 
-  const gameEngine = useRef(new GameEngine()).current
   const levelConfig = LEVEL_CONFIGS.find(config => config.id === level)
+  const gameEngine = useRef(new GameEngine()).current
+
+  // Инициализация денег из конфигурации уровня
+  useEffect(() => {
+    if (levelConfig && gameState === 'waiting') {
+      const baseTokens = levelConfig.resources?.tokens?.initial || 100
+      const bonusTokens = isCodeValid ? Math.floor(baseTokens * 0.5) : 0
+      setMoney(baseTokens + bonusTokens)
+    }
+  }, [levelConfig, isCodeValid, gameState])
 
   // Фиксированный путь для врагов (как в классической tower defense)
   const enemyPath = [
@@ -105,7 +114,12 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     setCurrentWave(0) // Начинаем с 0, первая волна будет 1
     setCompletedWaves(0) // Сбрасываем завершенные волны
     setLives(10)
-    setMoney(isCodeValid ? 150 : 100) // Бонус за правильный код
+    
+    // Используем ресурсы из конфигурации уровня с бонусом за валидный код
+    const baseTokens = levelConfig?.resources?.tokens?.initial || 100
+    const bonusTokens = isCodeValid ? Math.floor(baseTokens * 0.5) : 0 // +50% бонус за валидный код
+    setMoney(baseTokens + bonusTokens)
+    
     setEnemies([])
     setTowers([])
     setSelectedTower(null)
@@ -134,7 +148,12 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     setEnemies([])
     setTowers([])
     setLives(10)
-    setMoney(100)
+    
+    // Используем правильные начальные ресурсы из конфигурации уровня
+    const baseTokens = levelConfig?.resources?.tokens?.initial || 100
+    const bonusTokens = isCodeValid ? Math.floor(baseTokens * 0.5) : 0 // +50% бонус за валидный код
+    setMoney(baseTokens + bonusTokens)
+    
     setSelectedTower(null)
     
     // Вызываем callback перезапуска если он есть

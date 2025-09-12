@@ -65,9 +65,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { name, totalXP, currentLevel, playTime, completedLevels, unlockedLevels, achievements, levelCodes } = body || {}
 
+    console.log('POST /api/progress - данные:', { name, totalXP, currentLevel, completedLevels: completedLevels?.length, unlockedLevels: unlockedLevels?.length })
+
     if (!name) return NextResponse.json({ ok: false, message: 'name is required' }, { status: 400 })
 
     const user = await prisma.user.upsert({ where: { name }, update: {}, create: { name } })
+    console.log('Пользователь найден/создан:', user.id)
 
     const progress = await prisma.progress.upsert({
       where: { userId: user.id },
@@ -75,33 +78,98 @@ export async function POST(req: NextRequest) {
       create: { userId: user.id, totalXP: totalXP ?? 0, currentLevel: currentLevel ?? 1, playTime: playTime ?? 0 },
     })
 
-    // Списки уровней
-    if (Array.isArray(completedLevels)) {
-      await prisma.$transaction([
-        prisma.completedLevel.deleteMany({ where: { userId: user.id } }),
-        prisma.completedLevel.createMany({ data: completedLevels.map((levelId: number) => ({ userId: user.id, levelId })) })
-      ])
-    }
-    if (Array.isArray(unlockedLevels)) {
-      await prisma.$transaction([
-        prisma.unlockedLevel.deleteMany({ where: { userId: user.id } }),
-        prisma.unlockedLevel.createMany({ data: unlockedLevels.map((levelId: number) => ({ userId: user.id, levelId })) })
-      ])
+    // Обработка завершенных уровней с валидацией
+    if (completedLevels !== undefined) {
+      try {
+        // Нормализуем данные: если число - преобразуем в массив, если массив - дедуплицируем
+        let levelArray: number[] = []
+        if (Array.isArray(completedLevels)) {
+          levelArray = [...new Set(completedLevels.filter(id => typeof id === 'number' && id >= 1 && id <= 5))]
+        } else if (typeof completedLevels === 'number' && completedLevels >= 1 && completedLevels <= 5) {
+          // Если пришло число - создаем массив от 1 до этого числа
+          levelArray = Array.from({ length: completedLevels }, (_, i) => i + 1)
+        }
+        
+        console.log('Нормализованные завершенные уровни:', levelArray)
+        
+        if (levelArray.length > 0) {
+          // Используем upsert для каждого уровня вместо delete+createMany
+          await Promise.all(
+            levelArray.map(levelId =>
+              prisma.completedLevel.upsert({
+                where: { userId_levelId: { userId: user.id, levelId } },
+                update: {},
+                create: { userId: user.id, levelId }
+              })
+            )
+          )
+          console.log('Обновлены завершенные уровни:', levelArray.length)
+        }
+      } catch (error) {
+        console.error('Ошибка обновления завершенных уровней:', error)
+        // Не бросаем ошибку, чтобы не прерывать сохранение других данных
+      }
     }
 
-    // Достижения
+    // Обработка разблокированных уровней с валидацией
+    if (unlockedLevels !== undefined) {
+      try {
+        // Нормализуем данные
+        let levelArray: number[] = []
+        if (Array.isArray(unlockedLevels)) {
+          levelArray = [...new Set(unlockedLevels.filter(id => typeof id === 'number' && id >= 1 && id <= 5))]
+        } else if (typeof unlockedLevels === 'number' && unlockedLevels >= 1 && unlockedLevels <= 5) {
+          // Если пришло число - создаем массив от 1 до этого числа
+          levelArray = Array.from({ length: unlockedLevels }, (_, i) => i + 1)
+        }
+        
+        console.log('Нормализованные разблокированные уровни:', levelArray)
+        
+        if (levelArray.length > 0) {
+          // Используем upsert для каждого уровня
+          await Promise.all(
+            levelArray.map(levelId =>
+              prisma.unlockedLevel.upsert({
+                where: { userId_levelId: { userId: user.id, levelId } },
+                update: {},
+                create: { userId: user.id, levelId }
+              })
+            )
+          )
+          console.log('Обновлены разблокированные уровни:', levelArray.length)
+        }
+      } catch (error) {
+        console.error('Ошибка обновления разблокированных уровней:', error)
+        // Не бросаем ошибку, чтобы не прерывать сохранение других данных
+      }
+    }
+
+    // Достижения - используем upsert вместо delete+createMany
     if (Array.isArray(achievements)) {
-      await prisma.$transaction([
-        prisma.userAchievement.deleteMany({ where: { userId: user.id } }),
-        prisma.userAchievement.createMany({
-          data: achievements.map((a: any) => ({
-            userId: user.id,
-            achievementId: a.id,
-            unlocked: !!a.unlocked,
-            unlockedAt: a.unlocked ? new Date() : null,
-          }))
-        })
-      ])
+      try {
+        console.log('Обновление достижений:', achievements.length)
+        await Promise.all(
+          achievements.map(a =>
+            prisma.userAchievement.upsert({
+              where: { userId_achievementId: { userId: user.id, achievementId: a.id } },
+              update: { 
+                unlocked: !!a.unlocked,
+                unlockedAt: a.unlocked ? new Date() : null
+              },
+              create: {
+                userId: user.id,
+                achievementId: a.id,
+                unlocked: !!a.unlocked,
+                unlockedAt: a.unlocked ? new Date() : null,
+              }
+            })
+          )
+        )
+        console.log('Обновлены достижения:', achievements.filter((a: any) => a.unlocked).length, 'разблокировано')
+      } catch (error) {
+        console.error('Ошибка обновления достижений:', error)
+        // Не бросаем ошибку, чтобы не прерывать сохранение других данных
+      }
     }
 
     // Код уровней
@@ -129,6 +197,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, progress })
   } catch (e: any) {
+    console.error('Ошибка в POST /api/progress:', e)
     return NextResponse.json({ ok: false, message: e?.message || 'server error' }, { status: 500 })
   }
 }

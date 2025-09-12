@@ -58,6 +58,61 @@ export default function GamePage() {
   })
   const [startSignal, setStartSignal] = useState(0)
   const [showUsernameModal, setShowUsernameModal] = useState(false)
+
+  // 🧪 Функция тестирования достижений (добавляем в window для вызова из консоли)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).testAchievements = async () => {
+        console.log('🧪 ТЕСТ СИСТЕМЫ ДОСТИЖЕНИЙ НАЧАТ')
+        try {
+          const initialProgress = GameStorage.getProgress()
+          console.log('📊 Начальное состояние:', {
+            achievements: initialProgress.achievements.filter(a => a.unlocked).map(a => a.title),
+            completedLevels: initialProgress.completedLevels,
+            totalXP: initialProgress.totalXP
+          })
+          
+          // Завершаем первый уровень
+          console.log('🎮 Завершение уровня 1...')
+          const progressAfterLevel1 = GameStorage.completeLevel(1, 100)
+          setGameProgress(progressAfterLevel1) // Обновляем UI
+          setPlayerXP(progressAfterLevel1.totalXP)
+          
+          console.log('🎮 После завершения уровня 1:', {
+            achievements: progressAfterLevel1.achievements.filter(a => a.unlocked).map(a => a.title),
+            completedLevels: progressAfterLevel1.completedLevels,
+            totalXP: progressAfterLevel1.totalXP
+          })
+          
+          // Ждем сохранения в БД
+          console.log('💾 Ожидание сохранения в БД...')
+          await new Promise(resolve => setTimeout(resolve, 3000))
+          
+          // Перезагружаем из БД
+          console.log('🔄 Перезагрузка из БД...')
+          const reloadedProgress = await GameStorage.getProgressFromDB(progressAfterLevel1.player.name)
+          console.log('🔄 После перезагрузки из БД:', {
+            achievements: reloadedProgress.achievements.filter(a => a.unlocked).map(a => a.title),
+            completedLevels: reloadedProgress.completedLevels,
+            totalXP: reloadedProgress.totalXP
+          })
+          
+          const expectedAchievements = ['Первые шаги', 'Новичок в коде']
+          const unlockedTitles = reloadedProgress.achievements.filter(a => a.unlocked).map(a => a.title)
+          const success = expectedAchievements.every(title => unlockedTitles.includes(title))
+          
+          console.log(success ? '✅ ТЕСТ ПРОЙДЕН - Достижения работают!' : '❌ ТЕСТ НЕ ПРОЙДЕН - Достижения не сохраняются!')
+          return success
+        } catch (error) {
+          console.error('💥 Ошибка в тестах:', error)
+          return false
+        }
+      };
+      
+      (window as any).GameStorage = GameStorage;
+      console.log('🧪 Тест загружен! Запустите: testAchievements()');
+    }
+  }, [])
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [lastSavedAt, setLastSavedAt] = useState<Date | undefined>(undefined)
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null)
@@ -212,16 +267,16 @@ export default function GamePage() {
   }
 
   const handleLevelComplete = (xp: number) => {
-    // Сохраняем прогресс
+    // Сохраняем прогресс (completeLevel уже вызывает checkAchievements внутри)
     const updatedProgress = GameStorage.completeLevel(currentLevel, xp)
     setGameProgress(updatedProgress)
     setPlayerXP(updatedProgress.totalXP)
     
-    // Проверяем разблокированные достижения
-    const unlockedAchievements = GameStorage.checkAchievements(updatedProgress, currentLevel)
+    // Получаем информацию о разблокированных достижениях из прогресса
+    const newlyUnlockedAchievements = updatedProgress.achievements.filter(a => a.unlocked)
     
-    // Показываем уведомления о достижениях
-    unlockedAchievements.forEach(achievement => {
+    // Показываем уведомления о всех достижениях (можно улучшить логику для показа только новых)
+    newlyUnlockedAchievements.slice(-3).forEach(achievement => { // Показываем последние 3
       addConsoleLog('success', `🏆 Получено достижение: "${achievement.title}" (+${achievement.xpReward} XP)`)
     })
     
@@ -263,7 +318,11 @@ export default function GamePage() {
           playerXP={playerXP}
           completedLevels={gameProgress.completedLevels}
           unlockedLevels={gameProgress.unlockedLevels}
-          onLevelChange={setCurrentLevel}
+          onLevelChange={(level) => {
+            const updatedProgress = GameStorage.setCurrentLevel(level)
+            setGameProgress(updatedProgress)
+            setCurrentLevel(level)
+          }}
         />
       
       {/* Main Game Layout */}

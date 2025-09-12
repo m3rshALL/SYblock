@@ -198,18 +198,27 @@ export class GameStorage {
     if (typeof window === 'undefined') return false
     ;(async () => {
       try {
+        const payload = {
+          name: progress.player.name,
+          totalXP: progress.totalXP,
+          currentLevel: progress.currentLevel,
+          playTime: progress.playTime,
+          completedLevels: progress.completedLevels,
+          unlockedLevels: progress.unlockedLevels,
+          achievements: progress.achievements,
+        }
+        
+        console.log('💾 Отправляем прогресс в БД:', {
+          completedLevels: payload.completedLevels, 
+          unlockedLevels: payload.unlockedLevels,
+          completedLevelsType: Array.isArray(payload.completedLevels) ? 'array' : typeof payload.completedLevels,
+          unlockedLevelsType: Array.isArray(payload.unlockedLevels) ? 'array' : typeof payload.unlockedLevels
+        })
+        
         await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: progress.player.name,
-            totalXP: progress.totalXP,
-            currentLevel: progress.currentLevel,
-            playTime: progress.playTime,
-            completedLevels: progress.completedLevels,
-            unlockedLevels: progress.unlockedLevels,
-            achievements: progress.achievements,
-          })
+          body: JSON.stringify(payload)
         })
         console.log('💾 Прогресс сохранен в БД')
       } catch (e) {
@@ -322,14 +331,27 @@ export class GameStorage {
     const progress = this.getProgress()  // Теперь получит актуальные данные из кэша
     progress.currentLevel = levelId
     progress.lastPlayed = new Date().toISOString()
+    
+    // Автоматически разблокируем все уровни до текущего включительно
+    for (let i = 1; i <= levelId; i++) {
+      if (!progress.unlockedLevels.includes(i)) {
+        progress.unlockedLevels.push(i)
+      }
+    }
+    
+    // Сортируем массив для порядка
+    progress.unlockedLevels.sort((a, b) => a - b)
+    
     this.saveProgress(progress)
-    console.log(`💾 Сохранен текущий уровень: ${levelId}`)
+    console.log(`💾 Сохранен текущий уровень: ${levelId}, разблокированы уровни до ${levelId}`)
     return progress
   }
 
   // Проверка и разблокировка достижений
   static checkAchievements(progress: GameProgress, completedLevel?: number): Achievement[] {
     const unlockedAchievements: Achievement[] = []
+    
+    console.log(`🏆 Проверка достижений: completedLevel=${completedLevel}, totalLevels=${progress.completedLevels.length}, totalXP=${progress.totalXP}`)
 
     progress.achievements.forEach(achievement => {
       if (achievement.unlocked) return
@@ -338,7 +360,7 @@ export class GameStorage {
 
       switch (achievement.id) {
         case 'first_steps':
-          shouldUnlock = progress.completedLevels.length >= 1
+          shouldUnlock = completedLevel === 1 || progress.completedLevels.length >= 1
           break
         case 'beginner_coder':
           shouldUnlock = completedLevel === 1
@@ -353,6 +375,8 @@ export class GameStorage {
           shouldUnlock = completedLevel === 4
           break
         case 'security_guardian':
+          shouldUnlock = completedLevel === 5
+          break
         case 'blockchain_guardian':
           shouldUnlock = progress.completedLevels.length >= 5
           break
@@ -370,14 +394,16 @@ export class GameStorage {
       }
 
       if (shouldUnlock) {
+        console.log(`🎉 ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО: ${achievement.title} (+${achievement.xpReward} XP)`)
         achievement.unlocked = true
         progress.totalXP += achievement.xpReward
         progress.player.xp += achievement.xpReward
-        progress.player.achievements.push(achievement)
+        // Не добавляем в progress.player.achievements - они уже там из progress.achievements
         unlockedAchievements.push(achievement)
       }
     })
 
+    console.log(`🏆 Проверка завершена: разблокировано ${unlockedAchievements.length} достижений`)
     return unlockedAchievements
   }
 

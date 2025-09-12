@@ -4,13 +4,15 @@ FROM node:18-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --only=production --no-audit --no-fund
 
 FROM node:18-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Install all dependencies including devDependencies for build
+RUN npm ci --no-audit --no-fund
 RUN npx prisma generate
 RUN npm run build && npm run build:worker
 

@@ -515,15 +515,48 @@ contract DAO {
     initialCode: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+// Встроенная защита от reentrancy атак
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
 
 contract SecureVault is ReentrancyGuard {
     // Создайте максимально безопасный контракт
+    // Используйте modifier nonReentrant для защиты от reentrancy
 }`,
     solution: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+// Встроенная защита от reentrancy атак
+abstract contract ReentrancyGuard {
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _status;
+
+    constructor() {
+        _status = _NOT_ENTERED;
+    }
+
+    modifier nonReentrant() {
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+}
 
 contract SecureVault is ReentrancyGuard {
     mapping(address => uint256) public balances;
@@ -573,7 +606,7 @@ contract SecureVault is ReentrancyGuard {
         id: "security-hint-1",
         condition: "reentrancy_vulnerable",
         title: "Reentrancy защита",
-        content: "Используйте ReentrancyGuard и Checks-Effects-Interactions"
+        content: "Используйте modifier nonReentrant для защиты от повторных входов и следуйте паттерну Checks-Effects-Interactions"
       },
       {
         id: "security-hint-2",
@@ -649,9 +682,9 @@ contract SecureVault is ReentrancyGuard {
       defeatedBy: ['reentrancy_guard', 'circuit_breaker', 'mev_protection', 'perfect_code']
     },
     resources: {
-      gas: { initial: 500, maxCapacity: 800, regenerationRate: 35 },
-      tokens: { initial: 250, maxCapacity: 400, regenerationRate: 20 },
-      energy: { initial: 300, maxCapacity: 450, regenerationRate: 40 }
+      gas: { initial: 600, maxCapacity: 900, regenerationRate: 40 },
+      tokens: { initial: 500, maxCapacity: 700, regenerationRate: 30 },
+      energy: { initial: 400, maxCapacity: 550, regenerationRate: 50 }
     }
   }
 ]
