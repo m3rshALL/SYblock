@@ -1,1 +1,49 @@
-{}
+{
+  "app\\page.tsx -> @/components/FlexboxDefenseGame": {
+    "id": 2405,
+    "files": [
+      "static/chunks/405.9ba9ee4ea16a4fa9.js"
+    ]
+  },
+  "components\\CodeEditor.tsx -> ./CodeMirrorEditor": {
+    "id": 8783,
+    "files": [
+      "static/chunks/363642f4.bf75d6415d9b7418.js",
+      "static/chunks/659.b87014d5e1bf14a0.js",
+      "static/chunks/783.ad29e5e378cacb3a.js"
+    ]
+  },
+  "components\\CodeEditor.tsx -> ./EmbeddedRemix": {
+    "id": 1455,
+    "files": [
+      "static/chunks/455.9aeb26ea4986e074.js"
+    ]
+  },
+  "components\\CodeEditor.tsx -> ./SolidityDemo": {
+    "id": 2312,
+    "files": [
+      "static/chunks/312.7adbcf6cbdccfaf3.js"
+    ]
+  },
+  "components\\GameHeader.tsx -> ./AchievementsModal": {
+    "id": 2276,
+    "files": [
+      "static/chunks/44.aa76cb0ca6b7708a.js",
+      "static/chunks/276.a61089082782d61c.js"
+    ]
+  },
+  "components\\GameHeader.tsx -> ./LeaderboardModal": {
+    "id": 7996,
+    "files": [
+      "static/chunks/44.aa76cb0ca6b7708a.js",
+      "static/chunks/996.6b5ef1dbe9ed4b5a.js"
+    ]
+  },
+  "components\\GameHeader.tsx -> ./RemixInfo": {
+    "id": 8003,
+    "files": [
+      "static/chunks/289.06611a3a9361f1f7.js",
+      "static/chunks/3.3f61910f571323f5.js"
+    ]
+  }
+}

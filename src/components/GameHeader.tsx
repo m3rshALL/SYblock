@@ -4,6 +4,7 @@ import { Trophy, Star, Target, Book, HelpCircle, Award, Users, BookOpen } from '
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { safeGetItem } from '@/utils/localStorage'
 const RemixInfo = dynamic(() => import('./RemixInfo'), { ssr: false })
 const AchievementsModal = dynamic(() => import('./AchievementsModal'), { ssr: false })
 const LeaderboardModal = dynamic(() => import('./LeaderboardModal'), { ssr: false })
@@ -43,7 +44,7 @@ const GameHeader: React.FC<GameHeaderProps> = ({
     console.log(`🏆 Проверка сертификата: completedLevels=${JSON.stringify(completedLevels)}, level5completed=${isLevel5Completed}`)
     setCertificateEnabled(isLevel5Completed)
     // Получаем имя из localStorage или из текущего прогресса
-    const storedName = typeof window !== 'undefined' ? localStorage.getItem('smart-you-player-name') : null
+    const storedName = safeGetItem('smart-you-player-name')
     const currentProgress = GameStorage.getProgress()
     setPlayerName(storedName || currentProgress.player.name || GameStorage.getDefaultProgress().player.name)
   }, [completedLevels])

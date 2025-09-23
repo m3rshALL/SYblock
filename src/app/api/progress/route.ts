@@ -144,30 +144,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Достижения - используем upsert вместо delete+createMany
+    // Достижения - используем upsert для синхронного обновления
     if (Array.isArray(achievements)) {
       try {
         console.log('Обновление достижений:', achievements.length)
-        await Promise.all(
-          achievements.map(a =>
-            prisma.userAchievement.upsert({
-              where: { userId_achievementId: { userId: user.id, achievementId: a.id } },
+        
+        // Используем транзакцию для атомарности операций с достижениями
+        await prisma.$transaction(async (tx) => {
+          const unlockedCount = achievements.filter((a: any) => a.unlocked).length
+          console.log(`🏆 Разблокируем ${unlockedCount} достижений`)
+          
+          for (const achievement of achievements) {
+            await tx.userAchievement.upsert({
+              where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
               update: { 
-                unlocked: !!a.unlocked,
-                unlockedAt: a.unlocked ? new Date() : null
+                unlocked: !!achievement.unlocked,
+                unlockedAt: achievement.unlocked ? new Date() : null
               },
               create: {
                 userId: user.id,
-                achievementId: a.id,
-                unlocked: !!a.unlocked,
-                unlockedAt: a.unlocked ? new Date() : null,
+                achievementId: achievement.id,
+                unlocked: !!achievement.unlocked,
+                unlockedAt: achievement.unlocked ? new Date() : null,
               }
             })
-          )
-        )
-        console.log('Обновлены достижения:', achievements.filter((a: any) => a.unlocked).length, 'разблокировано')
+          }
+        })
+        
+        console.log('✅ Достижения успешно обновлены:', achievements.filter((a: any) => a.unlocked).length, 'разблокировано')
       } catch (error) {
-        console.error('Ошибка обновления достижений:', error)
+        console.error('❌ Ошибка обновления достижений:', error)
         // Не бросаем ошибку, чтобы не прерывать сохранение других данных
       }
     }

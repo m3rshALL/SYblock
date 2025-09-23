@@ -123,11 +123,14 @@ async function tryOnchainMint(address: string, level: number, score: number) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null) as {
-      address?: string
-      level?: number
-      score?: number
-    } | null
+    let body: { address?: string; level?: number; score?: number } | null = null
+    
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('Ошибка парсинга JSON в /api/mint:', parseError)
+      return NextResponse.json({ ok: false, message: 'Некорректный JSON в запросе' }, { status: 400 })
+    }
 
     if (!body?.address || !/^0x[a-fA-F0-9]{40}$/.test(body.address)) {
       return NextResponse.json({ ok: false, message: 'Некорректный адрес' }, { status: 400 })

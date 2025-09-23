@@ -36,7 +36,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({})) as { name?: string, levelId?: number, code?: string }
+    let body: { name?: string, levelId?: number, code?: string } = {}
+    
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('Ошибка парсинга JSON в /api/level-code:', parseError)
+      return NextResponse.json({ ok: false, message: 'Некорректный JSON в запросе' }, { status: 400 })
+    }
     const name = (body.name || '').toString().trim()
     const levelId = Number(body.levelId)
     const code = (body.code ?? '').toString()

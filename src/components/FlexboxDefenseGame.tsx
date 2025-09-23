@@ -16,7 +16,7 @@ interface FlexboxDefenseGameProps {
   level: number
   isCodeValid: boolean
   codeScore: number
-  onGameComplete: (success: boolean) => void
+  onGameComplete: (success: boolean, playTimeSeconds?: number) => void
   onGameStart: () => void
   onGameRestart?: () => void
   startSignal?: number
@@ -46,6 +46,10 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   const [mintStatus, setMintStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
   const [mintMessage, setMintMessage] = useState<string>("")
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 1.5 | 2>(1)
+  
+  // Отслеживание времени игры
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null)
+  const [totalPlayTime, setTotalPlayTime] = useState<number>(0)
 
   // Восстановление и сохранение выбранной скорости между сессиями
   useEffect(() => {
@@ -115,6 +119,9 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     setCompletedWaves(0) // Сбрасываем завершенные волны
     setLives(10)
     
+    // Записываем время начала игры
+    setGameStartTime(Date.now())
+    
     // Используем ресурсы из конфигурации уровня с бонусом за валидный код
     const baseTokens = levelConfig?.resources?.tokens?.initial || 100
     const bonusTokens = isCodeValid ? Math.floor(baseTokens * 0.5) : 0 // +50% бонус за валидный код
@@ -148,6 +155,9 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     setEnemies([])
     setTowers([])
     setLives(10)
+    
+    // Сбрасываем время игры
+    setGameStartTime(null)
     
     // Используем правильные начальные ресурсы из конфигурации уровня
     const baseTokens = levelConfig?.resources?.tokens?.initial || 100
@@ -348,7 +358,9 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
       // Собираем атаки по снимкам состояний
       const attacks: { enemyId: string; damage: number; towerId: string }[] = []
       for (const tower of towersSnapshot) {
-        if (now - tower.lastAttackTime < 800) continue
+        // Кулдаун атак башен должен учитывать скорость игры
+        const attackCooldown = Math.max(400, 800 / speedMultiplier)
+        if (now - tower.lastAttackTime < attackCooldown) continue
         const target = enemiesSnapshot.find(enemy => {
           if (enemy.health <= 0) return false
           const dx = enemy.x - tower.x
@@ -393,14 +405,26 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
       if (lives <= 0) {
         console.log(`💀 Поражение: жизни закончились`)
         setGameState('defeat')
-        onGameComplete(false)
+        
+        // Вычисляем время игры
+        const currentTime = Date.now()
+        const sessionPlayTime = gameStartTime ? Math.floor((currentTime - gameStartTime) / 1000) : 0
+        const totalTime = totalPlayTime + sessionPlayTime
+        
+        onGameComplete(false, totalTime)
       } else if (enemies.length === 0 && completedWaves >= 5) {
         // Победа только если завершили все 5 волн
         console.log(`🏆 Победа: все 5 волн завершены! (completedWaves: ${completedWaves})`)
         // Сохраняем ожидающую награду, чтобы игрок мог забрать NFT после сброса
         setPendingReward({ level, score: codeScore })
         setGameState('victory')
-        onGameComplete(true)
+        
+        // Вычисляем время игры
+        const currentTime = Date.now()
+        const sessionPlayTime = gameStartTime ? Math.floor((currentTime - gameStartTime) / 1000) : 0
+        const totalTime = totalPlayTime + sessionPlayTime
+        
+        onGameComplete(true, totalTime)
         // Через 2 секунды возвращаем игру в начало (ожидание старта)
         setTimeout(() => {
           resetToInitialWaiting()

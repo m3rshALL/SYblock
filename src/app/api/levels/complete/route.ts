@@ -8,7 +8,14 @@ const MAX_LEVEL = 5
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({})) as { name?: string, levelId?: number, xp?: number }
+    let body: { name?: string, levelId?: number, xp?: number } = {}
+    
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('Ошибка парсинга JSON в /api/levels/complete:', parseError)
+      return NextResponse.json({ ok: false, message: 'Некорректный JSON в запросе' }, { status: 400 })
+    }
     const name = (body.name || '').toString().trim()
     const levelId = Number(body.levelId)
     const xp = Math.max(0, Number(body.xp || 0))
@@ -81,10 +88,41 @@ export async function POST(req: NextRequest) {
 
     // Применяем анлоки + добавляем XP за достижения
     if (toUnlock.length > 0) {
-      await prisma.$transaction([
-        prisma.userAchievement.createMany({ data: toUnlock.map(t => ({ userId: user.id, achievementId: t.id, unlocked: true, unlockedAt: new Date() })) }),
-        prisma.progress.update({ where: { userId: user.id }, data: { totalXP: progress.totalXP + toUnlock.reduce((s, t) => s + t.xpReward, 0) } })
-      ])
+      try {
+        // Используем транзакцию для атомарности операций с достижениями
+        await prisma.$transaction(async (tx) => {
+          console.log(`🏆 Разблокируем ${toUnlock.length} достижений`)
+          
+          // Разблокируем достижения
+          for (const achievement of toUnlock) {
+            await tx.userAchievement.upsert({
+              where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
+              update: { 
+                unlocked: true,
+                unlockedAt: new Date()
+              },
+              create: {
+                userId: user.id,
+                achievementId: achievement.id,
+                unlocked: true,
+                unlockedAt: new Date()
+              }
+            })
+          }
+          
+          // Обновляем XP
+          const totalXpReward = toUnlock.reduce((s, t) => s + t.xpReward, 0)
+          await tx.progress.update({ 
+            where: { userId: user.id }, 
+            data: { totalXP: progress.totalXP + totalXpReward } 
+          })
+        })
+        
+        console.log(`✅ Разблокировано достижений: ${toUnlock.length}`)
+      } catch (error) {
+        console.error('❌ Ошибка разблокировки достижений:', error)
+        // Не прерываем выполнение, но логируем ошибку
+      }
     }
 
     // Возвращаем актуальные данные для клиента

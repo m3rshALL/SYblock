@@ -357,9 +357,16 @@ export default function GamePage() {
               level={currentLevel}
               isCodeValid={lastValidationResult.isValid}
               codeScore={lastValidationResult.score}
-              onGameComplete={(success) => {
+              onGameComplete={(success, playTimeSeconds) => {
                 if (success) {
                   const xpReward = currentLevelData?.xpReward || 50
+                  
+                  // Обновляем время игры если оно передано
+                  if (playTimeSeconds !== undefined) {
+                    GameStorage.updatePlayTime(playTimeSeconds)
+                    console.log(`⏱️ Обновлено время игры: ${playTimeSeconds} секунд`)
+                  }
+                  
                   handleLevelComplete(xpReward)
                 }
               }}
