@@ -131,7 +131,7 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   if (!isOpen) return null
 
-  const currentPlayer = leaderboard.find(p => p.isCurrentPlayer)
+  const currentPlayer = leaderboard.find(p => p.isCurrentPlayer) || leaderboard.find(p => p.name === userName)
   const topPlayers = leaderboard.filter(p => !p.isCurrentPlayer).slice(0, 10)
 
   return (

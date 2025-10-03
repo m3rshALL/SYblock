@@ -27,6 +27,7 @@ interface CodeEditorProps {
   onConsoleMessage?: (type: 'info' | 'error' | 'success' | 'warning', message: string) => void
   autosaveState?: 'idle' | 'saving' | 'saved' | 'error'
   lastSavedAt?: Date
+  onCompileAnalyzed?: (result: { ok: boolean }) => void
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ 
@@ -37,14 +38,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   level = 1,
   onConsoleMessage,
   autosaveState = 'idle',
-  lastSavedAt
+  lastSavedAt,
+  onCompileAnalyzed
 }) => {
   const [editorMode, setEditorMode] = useState<'simple' | 'remix'>('remix') // По умолчанию Remix
-  const [remixCompileResult, setRemixCompileResult] = useState<any>(null)
+  const [remixCompileResult, setRemixCompileResult] = useState<unknown>(null)
   const [showDemo, setShowDemo] = useState(false)
   const [cmIsCompiling, setCmIsCompiling] = useState(false)
   const [cmErrors, setCmErrors] = useState<string[]>([])
   const [autoRunAfterCompile, setAutoRunAfterCompile] = useState(true)
+
+  // Сбрасываем состояние компиляции при изменении кода
+  useEffect(() => {
+    if (code !== '') {
+      onCompileAnalyzed?.({ ok: false })
+    }
+  }, [code]) // Убираем onCompileAnalyzed из зависимостей
 
   // Горячие клавиши: Ctrl+Enter — компиляция/запуск; Ctrl+S — сохранить код
   useEffect(() => {
@@ -76,20 +85,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleReset = () => {
     onChange('')
+    setCmErrors([])
+    onCompileAnalyzed?.({ ok: false }) // Сбрасываем состояние компиляции
   }
 
-  const handleRemixCompile = (result: any) => {
+  const handleRemixCompile = (result: unknown) => {
     setRemixCompileResult(result)
     // Автоматически запускаем игру при успешной компиляции
-    if (result && !result.errors?.length) {
+    if (result && !(result as any).errors?.length) {
       onConsoleMessage?.('success', '✅ Remix: компиляция прошла успешно')
       if (autoRunAfterCompile) {
         setTimeout(() => {
           onRun()
         }, 500)
       }
-    } else if (result?.errors?.length) {
-      result.errors.slice(0, 10).forEach((e: any) => {
+    } else if ((result as any)?.errors?.length) {
+      (result as any).errors.slice(0, 10).forEach((e: any) => {
         const msg = typeof e === 'string' ? e : e.formattedMessage || e.message || 'Ошибка компиляции'
         onConsoleMessage?.('error', `Remix: ${msg}`)
       })
@@ -122,6 +133,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         errs.slice(0, 10).forEach((m: string) => onConsoleMessage?.('error', `Compiler: ${m}`))
         const warns = data.warnings || []
         warns.slice(0, 10).forEach((w: any) => onConsoleMessage?.('warning', `Compiler: ${w.message || w}`))
+        onCompileAnalyzed?.({ ok: false })
         return
       }
       const warns = data.warnings || []
@@ -154,11 +166,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         }
       }
       onConsoleMessage?.('success', '✅ Компиляция прошла успешно')
+      onCompileAnalyzed?.({ ok: true })
       // Если скомпилировалось — запускаем игру
       if (autoRunAfterCompile) onRun()
-    } catch (e: any) {
-      setCmErrors([e?.message || 'Не удалось выполнить компиляцию'])
-      onConsoleMessage?.('error', `Compiler: ${e?.message || 'Не удалось выполнить компиляцию'}`)
+    } catch (e: unknown) {
+      setCmErrors([e instanceof Error ? e.message : 'Не удалось выполнить компиляцию'])
+      onConsoleMessage?.('error', `Compiler: ${e instanceof Error ? e.message : 'Не удалось выполнить компиляцию'}`)
+      onCompileAnalyzed?.({ ok: false })
     } finally {
       setCmIsCompiling(false)
     }
@@ -335,7 +349,7 @@ contract MyContract {
           {/* Статус компиляции */}
           {editorMode === 'remix' && remixCompileResult ? (
             <div className="flex items-center gap-2">
-              {remixCompileResult.errors?.length > 0 ? (
+              {(remixCompileResult as any).errors?.length > 0 ? (
                 <span className="text-red-500">● Ошибки компиляции</span>
               ) : (
                 <span className="text-green-500">● Скомпилирован успешно</span>

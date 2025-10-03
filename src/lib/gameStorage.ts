@@ -215,12 +215,19 @@ export class GameStorage {
           unlockedLevelsType: Array.isArray(payload.unlockedLevels) ? 'array' : typeof payload.unlockedLevels
         })
         
-        await fetch('/api/progress', {
+        const res = await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         })
         console.log('💾 Прогресс сохранен в БД')
+        // Диспатчим событие для синхронизации UI/лидерборда
+        try {
+          if (typeof window !== 'undefined') {
+            const event = new CustomEvent('sy:progress-updated', { detail: { name: payload.name } })
+            window.dispatchEvent(event)
+          }
+        } catch {}
       } catch (e) {
         console.error('❌ Ошибка сохранения прогресса:', e)
       }

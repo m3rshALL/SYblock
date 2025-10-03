@@ -129,7 +129,9 @@ const GameHeader: React.FC<GameHeaderProps> = ({
             </button>
             
             <button
-              onClick={certificateEnabled ? () => setShowCertificate(true) : undefined}
+              onClick={() => {
+                if (certificateEnabled) setShowCertificate(true)
+              }}
               disabled={!certificateEnabled}
               className={`h-9 px-4 text-sm rounded transition-colors flex items-center min-w-[120px] justify-center ${
                 certificateEnabled 

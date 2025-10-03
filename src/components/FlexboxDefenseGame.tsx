@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { GameEngine } from '@/utils/gameEngine'
 import { LEVEL_CONFIGS, ENEMY_STATS, TOWER_STATS } from '@/data/levelConfigs'
-import type { Enemy, Tower, EnemyType, TowerType } from '@/types/game'
+import type { Enemy, Tower, TowerType } from '@/types/game'
 
 // Расширенный тип башни для игры
 interface GameTower extends Tower {
@@ -16,6 +16,7 @@ interface FlexboxDefenseGameProps {
   level: number
   isCodeValid: boolean
   codeScore: number
+  isGameBlocked?: boolean
   onGameComplete: (success: boolean, playTimeSeconds?: number) => void
   onGameStart: () => void
   onGameRestart?: () => void
@@ -27,6 +28,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   level,
   isCodeValid,
   codeScore,
+  isGameBlocked = false,
   onGameComplete,
   onGameStart,
   onGameRestart,
@@ -49,7 +51,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   
   // Отслеживание времени игры
   const [gameStartTime, setGameStartTime] = useState<number | null>(null)
-  const [totalPlayTime, setTotalPlayTime] = useState<number>(0)
+  const [totalPlayTime] = useState<number>(0)
 
   // Восстановление и сохранение выбранной скорости между сессиями
   useEffect(() => {
@@ -71,7 +73,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
   }, [speedMultiplier])
 
   const levelConfig = LEVEL_CONFIGS.find(config => config.id === level)
-  const gameEngine = useRef(new GameEngine()).current
+  // const gameEngine = useRef(new GameEngine()).current
 
   // Инициализация денег из конфигурации уровня
   useEffect(() => {
@@ -139,12 +141,12 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
     }, Math.max(300, 1000 / speedMultiplier)) // Учитываем скорость
   }
 
-  // Внешний автозапуск
+  // Внешний автозапуск (только если игра не заблокирована)
   useEffect(() => {
-    if (startSignal && gameState === 'waiting') {
+    if (startSignal && gameState === 'waiting' && !isGameBlocked) {
       startGame()
     }
-  }, [startSignal])
+  }, [startSignal, isGameBlocked])
 
   // Сброс игры в начальное состояние (экран ожидания)
   const resetToInitialWaiting = () => {
@@ -203,9 +205,9 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
       }
       setMintStatus('success')
       setMintMessage(`✅ NFT выдан! tokenId=${data.tokenId}, txHash=${data.txHash}`)
-    } catch (e: any) {
+    } catch (e: unknown) {
       setMintStatus('error')
-      setMintMessage(`Ошибка: ${e?.message || 'неизвестная ошибка'}`)
+      setMintMessage(`Ошибка: ${e instanceof Error ? e.message : 'неизвестная ошибка'}`)
     }
   }
 
@@ -230,11 +232,13 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
         y: enemyPath[0].y,
         health: (stats?.health || 50) * 1.5 + (waveNumber - 1) * 15, // Умеренное здоровье для динамики
         maxHealth: (stats?.health || 50) * 1.5 + (waveNumber - 1) * 15,
-        speed: Math.max(10, ((stats?.speed || 30) * 0.6 + (waveNumber - 1) * 1) * speedMultiplier), // Учитываем скорость
+        // Скорость врага не умножаем на speedMultiplier, чтобы не было двойного ускорения
+        // Общая скорость симуляции уже учитывается через интервал gameLoop и тайминги волн
+        speed: Math.max(10, ((stats?.speed || 30) * 0.6 + (waveNumber - 1) * 1)),
         type: enemyType,
         pathIndex: 0,
         reward: (stats?.reward || 10) + (waveNumber - 1) * 2,
-        abilities: (stats?.abilities || []) as any,
+        abilities: (stats?.abilities || []) as any[],
         effects: []
       }
       
@@ -275,7 +279,7 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
       lastAttackTime: 0,
       target: null,
       active: true,
-      abilities: (towerStats.abilities || []) as any
+      abilities: (towerStats.abilities || []) as any[]
     }
 
     setTowers(prev => [...prev, newTower])
@@ -468,9 +472,15 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
           {gameState === 'waiting' && (
             <button
               onClick={startGame}
-              className="bg-green-600 hover:bg-green-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm"
+              disabled={isGameBlocked}
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded text-xs sm:text-sm ${
+                isGameBlocked 
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
+              title={isGameBlocked ? 'Сначала скомпилируйте код через CodeMirror' : 'Начать игру'}
             >
-              ▶️ Начать игру
+              {isGameBlocked ? '🔒 Заблокировано' : '▶️ Начать игру'}
             </button>
           )}
           <div className={`px-2 py-1 rounded text-[10px] sm:text-xs ${
@@ -649,7 +659,16 @@ const FlexboxDefenseGame: React.FC<FlexboxDefenseGameProps> = ({
         )}
         {gameState === 'waiting' && (
           <div className="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-            <div className="text-base sm:text-xl font-bold text-gray-400 text-center px-2">Нажмите "Начать игру"</div>
+            <div className="text-base sm:text-xl font-bold text-center px-2">
+              {isGameBlocked ? (
+                <div className="text-red-400">
+                  <div>🔒 Игра заблокирована</div>
+                  <div className="text-sm text-gray-300 mt-2">Скомпилируйте код через CodeMirror</div>
+                </div>
+              ) : (
+                <div className="text-gray-400">Нажмите "Начать игру"</div>
+              )}
+            </div>
           </div>
         )}
 

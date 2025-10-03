@@ -1,15 +1,9 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/materials/page": "app/materials/page.js",
-  "/api/levels/complete/route": "app/api/levels/complete/route.js",
-  "/api/leaderboard/rebuild/route": "app/api/leaderboard/rebuild/route.js",
-  "/api/compile/route": "app/api/compile/route.js",
-  "/api/leaderboard/route": "app/api/leaderboard/route.js",
-  "/api/seed-achievements/route": "app/api/seed-achievements/route.js",
+  "/api/progress/route": "app/api/progress/route.js",
   "/api/level-code/route": "app/api/level-code/route.js",
-  "/api/users/route": "app/api/users/route.js",
-  "/api/seed/route": "app/api/seed/route.js",
-  "/api/mint/route": "app/api/mint/route.js",
-  "/api/progress/route": "app/api/progress/route.js"
+  "/api/leaderboard/route": "app/api/leaderboard/route.js",
+  "/materials/page": "app/materials/page.js",
+  "/api/compile/route": "app/api/compile/route.js"
 }

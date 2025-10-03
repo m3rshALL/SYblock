@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import GameHeader from '@/components/GameHeader'
 import CodeEditor from '@/components/CodeEditor'
 import dynamic from 'next/dynamic'
@@ -11,7 +11,7 @@ const FlexboxDefenseGame = dynamic(() => import('@/components/FlexboxDefenseGame
 import Console from '@/components/Console'
 import LevelInfo from '@/components/LevelInfo'
 import AIAssistant from '@/components/AIAssistant'
-import { validateSolidityCode, getCodeQualityScore, isCodeValid } from '@/utils/codeValidator'
+import { validateSolidityCode } from '@/utils/codeValidator'
 import { LEVEL_CONFIGS } from '@/data/levelConfigs'
 import { GameStorage } from '@/lib/gameStorage'
 import type { ConsoleLog } from '@/types/game'
@@ -57,12 +57,28 @@ export default function GamePage() {
     score: 0
   })
   const [startSignal, setStartSignal] = useState(0)
+  const [isCodeCompiled, setIsCodeCompiled] = useState(false) // Блокировка игры до компиляции
   const [showUsernameModal, setShowUsernameModal] = useState(false)
+
+  const addConsoleLog = useCallback((type: 'info' | 'error' | 'success' | 'warning', message: string) => {
+    setConsoleLogs((prev: ConsoleLog[]) => [...prev, { type, message, timestamp: new Date() }])
+  }, [])
+
+  // Обработчик результата компиляции
+  const handleCompileAnalyzed = useCallback(({ ok }: { ok: boolean }) => {
+    // Блокируем/разблокируем игру в зависимости от результата компиляции
+    setIsCodeCompiled(ok)
+    if (ok) {
+      addConsoleLog('success', '💰 Компиляция успешна — игра разблокирована!')
+    } else {
+      addConsoleLog('error', '❌ Компиляция не удалась — игра заблокирована')
+    }
+  }, [addConsoleLog])
 
   // 🧪 Функция тестирования достижений (добавляем в window для вызова из консоли)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).testAchievements = async () => {
+      (window as any).testAchievements = async (): Promise<boolean> => {
         console.log('🧪 ТЕСТ СИСТЕМЫ ДОСТИЖЕНИЙ НАЧАТ')
         try {
           const initialProgress = GameStorage.getProgress()
@@ -139,6 +155,7 @@ export default function GamePage() {
       // Сбрасываем состояние при переходе на новый уровень
       setCurrentErrors([])
       setLastValidationResult({ isValid: false, score: 0 })
+      setIsCodeCompiled(false) // Блокируем игру при смене уровня
       setConsoleLogs([]) // Очищаем консоль для нового уровня
       addConsoleLog('info', `📚 Загружен уровень ${currentLevel}: ${currentLevelData.title}`)
       addConsoleLog('info', `🎯 Цель: ${currentLevelData.description}`)
@@ -174,10 +191,6 @@ export default function GamePage() {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
   }, [code, currentLevel])
-
-  const addConsoleLog = (type: 'info' | 'error' | 'success' | 'warning', message: string) => {
-    setConsoleLogs((prev: ConsoleLog[]) => [...prev, { type, message, timestamp: new Date() }])
-  }
 
   const handleRunCode = async () => {
     if (!currentLevelData) return
@@ -259,7 +272,7 @@ export default function GamePage() {
         addConsoleLog('error', '❌ Код содержит критические ошибки. Защитные системы неактивны!')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       addConsoleLog('error', `Ошибка анализа: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`)
     } finally {
       setIsCompiling(false)
@@ -336,7 +349,7 @@ export default function GamePage() {
           
           {/* Редактор кода */}
           <div className="flex-1 min-h-[220px] sm:min-h-[260px] md:min-h-0">
-                      <CodeEditor
+          <CodeEditor
             code={code}
               onChange={setCode}
             onRun={handleRunCode}
@@ -345,6 +358,7 @@ export default function GamePage() {
               onConsoleMessage={(type, message) => addConsoleLog(type, message)}
             autosaveState={autosaveState}
             lastSavedAt={lastSavedAt}
+            onCompileAnalyzed={handleCompileAnalyzed}
           />
           </div>
         </div>
@@ -355,8 +369,9 @@ export default function GamePage() {
           <div className="flex-1 min-h-[220px] sm:min-h-[260px] md:min-h-0">
             <FlexboxDefenseGame 
               level={currentLevel}
-              isCodeValid={lastValidationResult.isValid}
+              isCodeValid={lastValidationResult.isValid && isCodeCompiled}
               codeScore={lastValidationResult.score}
+              isGameBlocked={!isCodeCompiled}
               onGameComplete={(success, playTimeSeconds) => {
                 if (success) {
                   const xpReward = currentLevelData?.xpReward || 50
